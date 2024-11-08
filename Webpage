@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Data Collection Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e9d5d5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card, .about-container, .preview-container {
+            background-color: #ffffff;
+            width: 400px;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none; /* Initially hidden */
+        }
+
+        h1 {
+            color: #2980B9;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #2980B9;
+        }
+
+        button {
+            width: 80%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            background-color: #3498DB;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2980B9;
+        }
+
+        .form-container {
+            display: none;
+            width: 400px;
+            padding: 20px;
+            border-radius: 15px;
+            background-color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        input, textarea {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .back-button {
+            background-color: #e74c3c;
+        }
+
+        .message {
+            margin-top: 10px;
+            color: green;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Home Page (Card Design) -->
+    <div class="card" id="home-page" style="display: block;">
+        <h1>Incident Reporting Form</h1>
+        <button onclick="showForm()">Start Reporting</button>
+        <button onclick="showAbout()">About the App</button>
+    </div>
+
+    <!-- Incident Form -->
+    <div class="form-container" id="incident-form">
+        <h2>Report Incident</h2>
+        <input type="text" id="incident-type" placeholder="Incident Type" required />
+        <input type="text" id="incident-location" placeholder="Incident Location" required />
+        <textarea id="description" placeholder="Description" required></textarea>
+        <textarea id="comment" placeholder="Comment"></textarea>
+        <label>Capture:</label>
+        <input type="file" id="image" accept="image/*" capture="camera" required />
+
+        <button onclick="saveData()">Submit Incident</button>
+        <button onclick="previewAllIncidents()">Preview All Incidents</button>
+        <button class="back-button" onclick="goBack()">Back</button>
+
+        <div class="message" id="message"></div>
+    </div>
+
+    <!-- About Section -->
+    <div class="about-container" id="about-page">
+        <h2>About the App</h2>
+        <p>This app is designed for offline data collection on incidents occurrence.<br>
+            Users can report incidents, provide descriptions, and upload images.<br>
+            All collected data can be saved in a CSV format for further analysis.</p>
+        <button class="back-button" onclick="goBackToHome()">Back</button>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="preview-container" id="preview-page">
+        <h2>Preview Incidents</h2>
+        <table id="preview-table">
+            <thead>
+                <tr>
+                    <th>Incident Type</th>
+                    <th>Incident Location</th>
+                    <th>Description</th>
+                    <th>Comment</th>
+                </tr>
+            </thead>
+            <tbody id="preview-body"></tbody>
+        </table>
+        <button onclick="downloadCSV()">Download CSV</button>
+        <button class="back-button" onclick="goBackToForm()">Back to Form</button>
+    </div>
+
+    <script>
+        let allIncidents = [];
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        function showForm() {
+            hideAllSections();
+            document.getElementById('incident-form').style.display = 'block';
+        }
+
+        function showAbout() {
+            hideAllSections();
+            document.getElementById('about-page').style.display = 'block';
+        }
+
+        function goBack() {
+            hideAllSections();
+            document.getElementById('home-page').style.display = 'block';
+        }
+
+        function goBackToHome() {
+            hideAllSections();
+            document.getElementById('home-page').style.display = 'block';
+        }
+
+        function goBackToForm() {
+            hideAllSections();
+            document.getElementById('incident-form').style.display = 'block';
+        }
+
+        function hideAllSections() {
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('incident-form').style.display = 'none';
+            document.getElementById('about-page').style.display = 'none';
+            document.getElementById('preview-page').style.display = 'none';
+        }
+
+        function clearForm() {
+            document.getElementById('incident-type').value = '';
+            document.getElementById('incident-location').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('comment').value = '';
+            document.getElementById('image').value = '';
+        }
+
+        function saveData() {
+            const incidentType = document.getElementById('incident-type').value;
+            const incidentLocation = document.getElementById('incident-location').value;
+            const description = document.getElementById('description').value;
+            const comment = document.getElementById('comment').value;
+            const imageFile = document.getElementById('image').files[0];
+
+            if (!incidentType || !incidentLocation || !description || !imageFile) {
+                alert("Please fill in all fields and upload an image.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const imageData = reader.result; // Base64-encoded image
+
+                // Push the data into the allIncidents array
+                allIncidents.push([incidentType, incidentLocation, description, comment, `"${imageData}"`]);
+                document.getElementById('message').innerText = "Incident saved!";
+                
+                clearForm(); // Clear form after submission
+            };
+
+            reader.readAsDataURL(imageFile); // Convert image to Base64
+        }
+
+        function previewAllIncidents() {
+            const previewBody = document.getElementById('preview-body');
+            previewBody.innerHTML = ''; // Clear previous data
+
+            allIncidents.forEach(incident => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${incident[0]}</td><td>${incident[1]}</td><td>${incident[2]}</td><td>${incident[3]}</td>`;
+                previewBody.appendChild(row);
+            });
+
+            hideAllSections();
+            document.getElementById('preview-page').style.display = 'block';
+        }
+
+        function downloadCSV() {
+            if (allIncidents.length === 0) {
+                alert("No incidents to download.");
+                return;
+            }
+
+            // Create CSV data excluding the base64 string for images
+            const csvData = [["Incident Type", "Incident Location", "Description", "Comment"], ...allIncidents.map(incident => incident.slice(0, 4))];
+
+            // Join data and ensure proper CSV formatting
+            let csvContent = "data:text/csv;charset=utf-8," + csvData.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "collected_incidents.csv");
+            document.body.appendChild(link);
+
+            link.click(); // Trigger download
+            document.body.removeChild(link); // Clean up
+        }
+    </script>
+
+</body>
+</html>
